@@ -1,5 +1,6 @@
 import os
 import json
+import random
 
 data = {}
 
@@ -8,7 +9,6 @@ if "user_id" not in data:
 
 path = os.getcwd()
 
-print(data['user_id'])
 
 def change_voc_new():
     category_input = "_"
@@ -37,9 +37,7 @@ def change_voc_new():
             json.dump(data_set, file)
         print("Das Set wurde angelegt!")
 
-
     set_site("change_voc_menu")
-    call_site()
 
 
 def change_voc_remove():
@@ -60,9 +58,7 @@ def change_voc_remove():
     else:
         print("Das Set ist nicht zu finden")
 
-
     set_site("change_voc_menu")
-    call_site()
 
 
 def change_voc_edit():
@@ -80,7 +76,7 @@ def change_voc_edit():
     print("Das Set wurde erfolgreich ausgewählt!")
 
     set_site("change_voc_edit_set")
-    call_site()
+
 
 def change_voc_edit_set():
     with open(f"{path}/data/{data['user_id']}/voc/{data['set_for_edit']}", "r") as file:
@@ -103,10 +99,8 @@ def change_voc_edit_set():
 
     if voc_numer == 0:
         set_site("change_voc_edit_set_add")
-        call_site()
-    if voc_numer == len(set_data["vocs"]) + 1:
+    elif voc_numer == len(set_data["vocs"]) + 1:
         set_site("change_voc_menu")
-        call_site()
     else:
         print(set_data["vocs"])
         print(vocs[voc_numer - 1])
@@ -115,10 +109,20 @@ def change_voc_edit_set():
         with open(f"{path}/data/{data['user_id']}/voc/{data['set_for_edit']}", "w") as file:
             json.dump(set_data, file)
         print("Die Vokabel wurde erfolgreich gelöscht!")
-        call_site()
+
 
 def change_voc_edit_set_add():
-    pass
+    with open(f"{path}/data/{data['user_id']}/voc/{data['set_for_edit']}", "r") as file:
+        set_data = json.load(file)
+    voc = input("Welche Vokabel möchtest du hinzufügen?\n")
+    translation = input("Wie lautet die Übersetzung?\n")
+
+    set_data["vocs"][voc] = translation
+    with open(f"{path}/data/{data['user_id']}/voc/{data['set_for_edit']}", "w") as file:
+        json.dump(set_data, file)
+
+    set_site("change_voc_edit_set")
+
 
 def change_voc_menu():
     converter = {1: "main", 2: "change_voc_new", 3: "change_voc_remove", 4: "change_voc_edit"}
@@ -129,18 +133,40 @@ def change_voc_menu():
                            "4 -> Set bearbeiten\n"))
 
     set_site(converter[user_input])
-    call_site()
 
 
 def train_voc_menu():
-    user_input = int(input("Was möchtest du lernen?"))
+    sets = [file for file in os.listdir(f"{path}/data/{data['user_id']}/voc/")]
+    for i, set_name in enumerate(sets):
+        print(f"{i + 1} -> {set_name.replace('.json', '')}")
 
-    call_site()
+    set_number = 0
+
+    while set_number > len(sets) or set_number <= 0:
+        set_number = int(input("Welches Set möchtest du trainieren?\n"))
+
+    with open(f"{path}/data/{data['user_id']}/voc/{sets[set_number-1]}", "r") as file:
+        set_data = json.load(file)
+
+    vocs = set_data["vocs"]
+
+    user_input = "0"
+    print("Um das Training zu beenden gebe 1 ein")
+    while user_input != "1":
+
+        keys = list(vocs.keys())
+        voc = random.choice(keys)
+        print("Übersetze " + voc)
+        user_input = input("")
+        if user_input == vocs[voc]:
+            print("Richtig")
+        else:
+            print("Falsch")
+    set_site("main")
 
 
 def stats_menu():
     set_site("main")
-    call_site()
 
 
 def set_site(site_name):
@@ -156,7 +182,6 @@ def menu():
                   "3 -> Statistiken anzeigen\n"))
     
     set_site(converter[user_input])
-    call_site()
 
 
 site = "main"    
@@ -174,5 +199,5 @@ sites = {"main": menu,
 def call_site():
     sites[site]()
 
-
-call_site()
+while True:
+    call_site()
