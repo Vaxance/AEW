@@ -214,6 +214,8 @@ def train_voc_menu() -> None:
     #  {"apple": "apfel", "hello": "hallo"}
     vocs = set_data["vocs"]
 
+    all_time_lerned = set_data['stats']['all_time_lerned']
+    all_time_right = set_data['stats']['all_time_right']
     #  Training des Sets bis zur eingabe von '1'
     user_input = ""
     print("Um das Training zu beenden gebe 1 ein")
@@ -223,11 +225,23 @@ def train_voc_menu() -> None:
         voc = random.choice(keys)
         print("Übersetze " + voc)
         user_input = input("")
+        if user_input == "1":
+            break
+
         if user_input == vocs[voc]:
             print("Richtig")
+            all_time_right += 1
         else:
             print("Falsch")
 
+        all_time_lerned += 1
+
+    set_data['stats']['all_time_lerned']= all_time_lerned
+    set_data['stats']['all_time_right']= all_time_right
+
+    #  überschreiben der Datei mit neuen Werten
+    with open(f"{path}/data/{data['user_id']}/voc/{sets[set_number - 1]}", "w") as file:
+        json.dump(set_data, file)
     set_site("main")
 
 
@@ -236,7 +250,34 @@ def stats_menu() -> None:
     Dialog, that shows the statistics of the set's
     :return: None
     """
-    print("Funktion leider nicht verfügbar")
+    sets = [file for file in os.listdir(f"{path}/data/{data['user_id']}/voc/")]
+
+    #  die erstellte Liste wird ausgegeben
+    for i, set_name in enumerate(sets):
+        print(f"{i + 1} -> {set_name.replace('.json', '')}")
+
+    #  der Nutzer wird gefragt, welches Set er löschen möchte.
+    #  Ebenfalls wird überprüft, ob diese Setnummer überhaubt möglich ist
+    set_nummer = 0
+
+    while set_nummer > len(sets) or set_nummer <= 0:
+        set_nummer = int(input("Welche Setnummer soll gelöscht werden?\n"))
+
+    #  auslesen des Dateinamens, anhand der eingegebenen Nummer
+    file_name = f"{sets[set_nummer - 1]}"
+
+    #  Überprüfung, ob das Set existirt(Ist nicht wirklich notwendig, habe es aber aus Sicherheitsgründen gemacht)
+    if os.path.isfile(f"{path}/data/{data['user_id']}/voc/{file_name}"):
+        with open(f"{path}/data/{data['user_id']}/voc/{file_name}", "r") as file:
+            set_data = json.load(file)
+
+        stats = set_data['stats']
+
+        print("Du hast folgende Statistiken für das Set!")
+        print("Gelernte Vokabeln: " + str(stats['all_time_lerned']))
+        print("Davon richtig: " + str(stats['all_time_right']))
+
+
     set_site("main")
 
 
@@ -285,4 +326,8 @@ def call_site() -> None:
 
 
 while True:
-    call_site()
+    try:
+        print("---------------------------------------------------")
+        call_site()
+    except:
+        print("Es ist ein Fehler aufgetreten, bitte versuche es erneut!")
