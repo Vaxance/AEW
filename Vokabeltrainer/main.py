@@ -288,91 +288,107 @@ def menu() -> None:
     The start page dialog
     :return: None
     """
-    converter = {1: "change_voc_menu", 2: "train_voc_menu", 3: "statistic"}
+    converter = {1: "change_voc_menu", 2: "train_voc_menu", 3: "statistic", 4: "logout"}
     user_input = int(input("Was möchtest du machen?\n"
                            "1 -> Vokabeln bearbeiten\n"
                            "2 -> Vokabeln trainieren\n"
-                           "3 -> Statistiken anzeigen\n"))
+                           "3 -> Statistiken anzeigen\n"
+                           "4 -> Logout\n"))
 
     set_site(converter[user_input])
 
 
+def login_login_func():
+    user_name = input("Nutzername: ")
+    password = getpass.getpass(prompt='Password: ', stream=None)
+
+    with open(f"{path}/data/user.json", "r") as file:
+        user_datas = json.load(file)
+
+    if user_name in user_datas:
+        hash_save = hashlib.new("whirlpool")
+        hash_save.update(password.encode())
+
+        if hash_save.hexdigest() == user_datas[user_name]["user_password_hashed"]:
+            print("Login erfolgreich")
+
+
+            data['user_id'] = user_datas[user_name]['user_id']
+            data['user_set'] = user_datas[user_name]
+
+            set_site("main")
+            return
+
+    print("Anmeldedaten ungültig")
+
+
+def login_register_func():
+    user_name = input("Nutzername: ")
+    password = ""
+    password_two = "_"
+    while password != password_two:
+        password = getpass.getpass(prompt='Password: ')
+        password_two = getpass.getpass(prompt='Password bestätigen: ')
+        if password != password_two:
+            print("Leider sind die Passwörter nicht passend!")
+
+    checked_uuid = False
+
+    while not checked_uuid:
+        uuid = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase) for i in range(7))
+        uuids = [file for file in os.listdir(f"{path}/data/") if os.path.isdir(f"{path}/data/{file}")]
+        checked_uuid = not uuid in uuids
+
+    with open(f"{path}/data/user.json", "r") as file:
+        user_datas = json.load(file)
+
+    if user_name in user_datas:
+        print("Der Benutzername existrt bereits!")
+        return
+
+    name = input("Ganzer Name: ")
+
+    hash_save = hashlib.new("whirlpool")
+    hash_save.update(password.encode())
+
+    user_data = {
+        "name": name,
+        "user_id": uuid,
+        "user_password_hashed": hash_save.hexdigest()
+    }
+
+    user_datas[user_name] = user_data
+
+    with open(f"{path}/data/user.json", "w") as file:
+        json.dump(user_datas, file, indent=4)
+
+    os.makedirs(f"{path}/data/{uuid}/voc/")
+
+    print("Dein Nutzer wurde erstellt bitte melde dich an!")
+
 def login():
-    print("----------------[Vokabeltrainer]----------------")
+    translater = {
+        1: login_login_func,
+        2: login_register_func
+    }
     print("1 -> Login")
     print("2 -> Register")
 
     user_select = int(input("Welche Aktion soll asgeführt werden?"))
 
-    if user_select == 1:
-        user_name = input("Nutzername: ")
-        password = getpass.getpass(prompt='Password: ', stream=None)
-
-        with open(f"{path}/data/user.json", "r") as file:
-            user_datas = json.load(file)
-
-        if user_name in user_datas:
-            hash_save = hashlib.new("whirlpool")
-            hash_save.update(password.encode())
-
-            if hash_save.hexdigest() == user_datas[user_name]["user_password_hashed"]:
-                print("Login erfolgreich")
-
-                if "user_id" not in data:
-                    data['user_id'] = user_datas[user_name]['user_id']
-
-                set_site("main")
-                return
-
-        print("Anmeldedaten ungültig")
-
-    elif user_select == 2:
-        user_name = input("Nutzername: ")
-        password = ""
-        password_two = "_"
-        while password != password_two:
-            password = getpass.getpass(prompt='Password: ')
-            password_two = getpass.getpass(prompt='Password bestätigen: ')
-            if password != password_two:
-                print("Leider sind die Passwörter nicht passend!")
-
-        checked_uuid = False
-
-        while not checked_uuid:
-            uuid = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase) for i in range(7))
-            uuids = [uuid for file in os.listdir(f"{path}/data/") if os.path.isdir(f"{path}/data/{file}")]
-
-            checked_uuid = uuid in uuids
-
-        with open(f"{path}/data/user.json", "r") as file:
-            user_datas = json.load(file)
-
-        if user_name in user_datas:
-            print("Der Benutzername existrt bereits!")
-            return
-
-        hash_save = hashlib.new("whirlpool")
-        hash_save.update(password.encode())
-
-        user_data = {
-            "user_id": uuid,
-            "user_password_hashed": hash_save.hexdigest()
-        }
-
-        user_datas[user_name] = user_data
-
-        with open(f"{path}/data/user.json", "w") as file:
-            json.dump(user_datas, file, indent=4)
-
-        os.makedirs(f"{path}/data/{uuid}/voc/")
-
-        print("Dein Nutzer wurde erstellt bitte melde dich an!")
+    translater[user_select]()
 
 
+def logout():
+    global data
+    data = {}
+    print("Sie wurden erfolgreich abgemeldet.")
+    set_site("login")
 
 
 site = "login"
 sites = {"login": login,
+         "logout": logout,
          "main": menu,
          "change_voc_menu": change_voc_menu,
          "train_voc_menu": train_voc_menu,
@@ -404,8 +420,14 @@ def call_site() -> None:
 
 
 while True:
-    #try:
-    print("---------------------------------------------------")
-    call_site()
-    #except:
-    #    print("Es ist ein Fehler aufgetreten, bitte versuche es erneut!")
+    try:
+        if "user_set" in data:
+            print(f"---------------[Vokabeltrainer - {data['user_set']['name']}]---------------")
+        else:
+            print(f"---------------[Vokabeltrainer]---------------")
+        call_site()
+    except KeyboardInterrupt as key_error:
+        exit(1)
+    except:
+        print("Es ist ein Fehler aufgetreten, bitte versuche es erneut!")
+
