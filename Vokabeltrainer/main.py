@@ -2,11 +2,14 @@ import os
 import json
 import random
 
-#  erstellen eines Speicherortes für Variablen, ohne diese fest zu definiren
-data = {}
+import getpass
+import hashlib
 
-if "user_id" not in data:
-    data['user_id'] = "jsdjaf"
+#  erstellen eines Speicherortes für Variablen, ohne diese fest zu definiren
+import secrets
+import string
+
+data = {}
 
 #  abspeichern des Dateipfades, wo sich die main.py befindet
 path = os.getcwd()
@@ -148,7 +151,7 @@ def change_voc_edit_set() -> None:
         del set_data["vocs"][vocs[voc_numer - 1]]
         #  öffnen der Datei und überschreiebn der Daten aus der Datei mit der Variable im Programm
         with open(f"{path}/data/{data['user_id']}/voc/{data['set_for_edit']}", "w") as file:
-            json.dump(set_data, file)
+            json.dump(set_data, file, indent=4)
         print("Die Vokabel wurde erfolgreich gelöscht!")
 
 
@@ -170,7 +173,7 @@ def change_voc_edit_set_add() -> None:
 
     #  überschreiben der Datei mit neuen Werten
     with open(f"{path}/data/{data['user_id']}/voc/{data['set_for_edit']}", "w") as file:
-        json.dump(set_data, file)
+        json.dump(set_data, file, indent=4)
 
     set_site("change_voc_edit_set")
 
@@ -236,12 +239,12 @@ def train_voc_menu() -> None:
 
         all_time_lerned += 1
 
-    set_data['stats']['all_time_lerned']= all_time_lerned
-    set_data['stats']['all_time_right']= all_time_right
+    set_data['stats']['all_time_lerned'] = all_time_lerned
+    set_data['stats']['all_time_right'] = all_time_right
 
     #  überschreiben der Datei mit neuen Werten
     with open(f"{path}/data/{data['user_id']}/voc/{sets[set_number - 1]}", "w") as file:
-        json.dump(set_data, file)
+        json.dump(set_data, file, indent=4)
     set_site("main")
 
 
@@ -277,7 +280,6 @@ def stats_menu() -> None:
         print("Gelernte Vokabeln: " + str(stats['all_time_lerned']))
         print("Davon richtig: " + str(stats['all_time_right']))
 
-
     set_site("main")
 
 
@@ -295,8 +297,83 @@ def menu() -> None:
     set_site(converter[user_input])
 
 
-site = "main"
-sites = {"main": menu,
+def login():
+    print("----------------[Vokabeltrainer]----------------")
+    print("1 -> Login")
+    print("2 -> Register")
+
+    user_select = int(input("Welche Aktion soll asgeführt werden?"))
+
+    if user_select == 1:
+        user_name = input("Nutzername: ")
+        password = getpass.getpass(prompt='Password: ', stream=None)
+
+        with open(f"{path}/data/user.json", "r") as file:
+            user_datas = json.load(file)
+
+        if user_name in user_datas:
+            hash_save = hashlib.new("whirlpool")
+            hash_save.update(password.encode())
+
+            if hash_save.hexdigest() == user_datas[user_name]["user_password_hashed"]:
+                print("Login erfolgreich")
+
+                if "user_id" not in data:
+                    data['user_id'] = user_datas[user_name]['user_id']
+
+                set_site("main")
+                return
+
+        print("Anmeldedaten ungültig")
+
+    elif user_select == 2:
+        user_name = input("Nutzername: ")
+        password = ""
+        password_two = "_"
+        while password != password_two:
+            password = getpass.getpass(prompt='Password: ')
+            password_two = getpass.getpass(prompt='Password bestätigen: ')
+            if password != password_two:
+                print("Leider sind die Passwörter nicht passend!")
+
+        checked_uuid = False
+
+        while not checked_uuid:
+            uuid = ''.join(secrets.choice(string.ascii_uppercase + string.ascii_lowercase) for i in range(7))
+            uuids = [uuid for file in os.listdir(f"{path}/data/") if os.path.isdir(f"{path}/data/{file}")]
+
+            checked_uuid = uuid in uuids
+
+        with open(f"{path}/data/user.json", "r") as file:
+            user_datas = json.load(file)
+
+        if user_name in user_datas:
+            print("Der Benutzername existrt bereits!")
+            return
+
+        hash_save = hashlib.new("whirlpool")
+        hash_save.update(password.encode())
+
+        user_data = {
+            "user_id": uuid,
+            "user_password_hashed": hash_save.hexdigest()
+        }
+
+        user_datas[user_name] = user_data
+
+        with open(f"{path}/data/user.json", "w") as file:
+            json.dump(user_datas, file, indent=4)
+
+        os.makedirs(f"{path}/data/{uuid}/voc/")
+
+        print("Dein Nutzer wurde erstellt bitte melde dich an!")
+
+
+
+
+site = "login"
+sites = {"login": login,
+         "main": menu,
          "change_voc_menu": change_voc_menu,
          "train_voc_menu": train_voc_menu,
          "statistic": stats_menu,
@@ -325,9 +402,10 @@ def call_site() -> None:
     sites[site]()
 
 
+
 while True:
-    try:
-        print("---------------------------------------------------")
-        call_site()
-    except:
-        print("Es ist ein Fehler aufgetreten, bitte versuche es erneut!")
+    #try:
+    print("---------------------------------------------------")
+    call_site()
+    #except:
+    #    print("Es ist ein Fehler aufgetreten, bitte versuche es erneut!")
